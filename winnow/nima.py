@@ -48,10 +48,17 @@ class NimaEstimator:
                 "assumes higher-is-better aesthetic scores."
             )
 
-    @torch.no_grad()
     def estimate(self, image_path) -> float:
-        """Return the mean aesthetic score for a RAW or standard image."""
-        img = load_pil(image_path)
+        """Return the mean aesthetic score for a RAW or standard image path."""
+        return self.estimate_image(load_pil(image_path))
+
+    @torch.no_grad()
+    def estimate_image(self, img) -> float:
+        """Return the mean aesthetic score for an already-decoded PIL RGB image.
+
+        Callers that also need the pixels (e.g. the dedupe pass computing a
+        perceptual hash) decode once and pass the image here, avoiding a second
+        RAW decode. The image may be down-scaled in place to bound VRAM."""
         if self.max_edge and max(img.size) > self.max_edge:
             img.thumbnail((self.max_edge, self.max_edge))
         tensor = to_tensor(img).unsqueeze(0).to(self.device)  # (1, 3, H, W) in [0, 1]

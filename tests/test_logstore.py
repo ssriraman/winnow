@@ -15,7 +15,7 @@ def test_missing_log_returns_empty_schemad_frame(tmp_path):
     assert len(df) == 0
 
 
-def test_legacy_log_without_aesthetic_column_gets_one(tmp_path):
+def test_legacy_log_without_aesthetic_or_hash_columns_gets_them(tmp_path):
     path = tmp_path / "analysis_log.csv"
     pd.DataFrame(
         {"filename": ["a.CR3"], "focus": [600.0], "shake": [25.0], "over": [0.0], "under": [0.0]}
@@ -23,4 +23,5 @@ def test_legacy_log_without_aesthetic_column_gets_one(tmp_path):
 
     df = load_log(path)
     assert "aesthetic" in df.columns
+    assert "hash" in df.columns
     assert len(df) == 1

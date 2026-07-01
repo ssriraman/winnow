@@ -15,9 +15,10 @@ IMAGE_EXTENSIONS = RAW_EXTENSIONS + STANDARD_EXTENSIONS
 
 # --- Shared analysis log ---------------------------------------------------
 LOG_FILENAME = "analysis_log.csv"
-# Technical pass writes the first five columns; the aesthetic pass fills 'aesthetic'.
+# Technical pass writes the first five columns; the aesthetic pass fills
+# 'aesthetic' and (for dedupe) the perceptual-'hash' column.
 TECHNICAL_COLUMNS = ["filename", "focus", "shake", "over", "under"]
-LOG_COLUMNS = TECHNICAL_COLUMNS + ["aesthetic"]
+LOG_COLUMNS = TECHNICAL_COLUMNS + ["aesthetic", "hash"]
 
 # --- NIMA aesthetic model --------------------------------------------------
 # pyiqa metric name. "nima" is a NIMA model trained on the AVA aesthetic
@@ -30,6 +31,16 @@ NIMA_MAX_EDGE = 1024
 DEFAULT_DEVICE = "cuda"
 DEFAULT_TOP_PERCENT = 10.0
 DEFAULT_AESTHETIC_THRESHOLD = 6.5
+
+# --- Perceptual-hash dedupe (optional aesthetic-filter step) ---------------
+# dHash side length: the hash is DEFAULT_HASH_SIZE**2 bits (8 -> 64-bit).
+DEFAULT_HASH_SIZE = 8
+# Two images are treated as near-duplicates when their hashes differ by at most
+# this many bits. ~5/64 tolerates burst frames and mild edits while keeping
+# genuinely distinct compositions apart; raise it to cluster more aggressively.
+DEFAULT_HAMMING_THRESHOLD = 5
+# Where deduped (non-winning) near-duplicates are moved.
+DUPLICATES_DIRNAME = "duplicates"
 
 
 @dataclass

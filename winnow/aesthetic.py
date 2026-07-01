@@ -13,16 +13,24 @@ from pathlib import Path
 import numpy as np
 from tqdm import tqdm
 
-from .config import DEFAULT_DEVICE, DEFAULT_TOP_PERCENT, LOG_FILENAME
-from .io_utils import find_images
+from .config import (
+    DEFAULT_DEVICE,
+    DEFAULT_HAMMING_THRESHOLD,
+    DEFAULT_TOP_PERCENT,
+    DUPLICATES_DIRNAME,
+    LOG_FILENAME,
+)
+from .dedupe import cluster_by_hash, dhash, format_hash
+from .io_utils import find_images, load_pil
 from .logstore import load_log
 
 
 def batch_score_to_log(directory_path, log_path=LOG_FILENAME, device=DEFAULT_DEVICE):
     """Score every un-scored image (RAW/JPEG/PNG) in a dir and write it to the
-    log's ``aesthetic`` column. Does not require a pre-existing log: a missing
-    log is created, and files with no existing row are appended. Resumable: rows
-    with ``aesthetic > 0`` are skipped."""
+    log's ``aesthetic`` column, alongside a perceptual ``hash`` (for later
+    ``aesthetic-filter --dedupe``). Does not require a pre-existing log: a
+    missing log is created, and files with no existing row are appended.
+    Resumable: rows with ``aesthetic > 0`` are skipped."""
     from .nima import NimaEstimator  # lazy: pulls the optional pyiqa/torch stack
 
     estimator = NimaEstimator(device=device)
@@ -40,15 +48,19 @@ def batch_score_to_log(directory_path, log_path=LOG_FILENAME, device=DEFAULT_DEV
         if file.name in processed_files:
             continue
 
-        score = estimator.estimate(str(file))
+        # One decode feeds both the perceptual hash and the NIMA score.
+        img = load_pil(str(file))
+        file_hash = format_hash(dhash(img))
+        score = estimator.estimate_image(img)
 
         if (df["filename"] == file.name).any():
-            df.loc[df["filename"] == file.name, "aesthetic"] = score
+            df.loc[df["filename"] == file.name, ["aesthetic", "hash"]] = [score, file_hash]
         else:
             # File not logged by the technical pass; record it ourselves.
             new_row = {col: None for col in df.columns}
             new_row["filename"] = file.name
             new_row["aesthetic"] = score
+            new_row["hash"] = file_hash
             df.loc[len(df)] = new_row
 
         # Save periodically to prevent data loss on long runs.
@@ -69,9 +81,66 @@ def _prepare_dirs(source_dir):
     return source, high_quality_dir, others_dir
 
 
-def filter_by_percentile(source_dir, top_n_percent=DEFAULT_TOP_PERCENT, device=DEFAULT_DEVICE):
+def _score_directory(estimator, files, dedupe):
+    """Decode + score every file once, optionally computing a perceptual hash in
+    the same pass. Returns a list of ``{"path", "score"[, "hash"]}`` dicts."""
+    results = []
+    for file in tqdm(files, desc="Scoring"):
+        try:
+            img = load_pil(str(file))
+            result = {"path": file, "score": None}
+            if dedupe:
+                # Hash the full-res decode before estimate_image() down-scales it.
+                result["hash"] = dhash(img)
+            result["score"] = estimator.estimate_image(img)
+            results.append(result)
+            estimator.empty_cache()  # keep VRAM clean
+        except Exception as e:
+            print(f"Error scoring {file.name}: {e}")
+    return results
+
+
+def _resolve_duplicates(results, duplicates_dir, hash_threshold):
+    """Cluster scored images by perceptual hash and keep only the top-scoring
+    member of each near-duplicate cluster; move the losers into
+    ``duplicates_dir``. Returns the surviving results (one per cluster)."""
+    clusters = cluster_by_hash(results, threshold=hash_threshold)
+    survivors, moved = [], 0
+    for cluster in clusters:
+        best = max(cluster, key=lambda r: r["score"])
+        survivors.append(best)
+        for item in cluster:
+            if item is best:
+                continue
+            duplicates_dir.mkdir(exist_ok=True)
+            try:
+                shutil.move(str(item["path"]), str(duplicates_dir / item["path"].name))
+                moved += 1
+            except Exception as e:
+                print(f"Error moving duplicate {item['path'].name}: {e}")
+    if moved:
+        print(
+            f"\nDedupe: kept {len(survivors)} unique image(s), moved {moved} "
+            f"near-duplicate(s) to '{duplicates_dir.name}'."
+        )
+    # Preserve original discovery order for stable downstream reporting.
+    return sorted(survivors, key=lambda r: r["path"].name)
+
+
+def filter_by_percentile(
+    source_dir,
+    top_n_percent=DEFAULT_TOP_PERCENT,
+    device=DEFAULT_DEVICE,
+    dedupe=False,
+    hash_threshold=DEFAULT_HAMMING_THRESHOLD,
+):
     """Score a directory, then move the top N%% into ``aesthetic_keepers`` and
-    the rest into ``others``."""
+    the rest into ``others``.
+
+    With ``dedupe=True``, near-duplicate frames (Hamming distance
+    ``<= hash_threshold`` on a perceptual hash) are collapsed first: only the
+    highest-scoring frame of each cluster survives into the percentile decision;
+    the rest are moved to ``duplicates`` and excluded from the percentile math."""
     source, high_quality_dir, others_dir = _prepare_dirs(source_dir)
 
     print("Loading NIMA model...")
@@ -86,17 +155,14 @@ def filter_by_percentile(source_dir, top_n_percent=DEFAULT_TOP_PERCENT, device=D
 
     # 1. Scoring pass.
     print(f"Critiquing {len(files)} files...")
-    results = []
-    for file in tqdm(files, desc="Scoring"):
-        try:
-            score = estimator.estimate(str(file))
-            results.append({"path": file, "score": score})
-            estimator.empty_cache()  # keep VRAM clean
-        except Exception as e:
-            print(f"Error scoring {file.name}: {e}")
+    results = _score_directory(estimator, files, dedupe)
 
     if not results:
         return
+
+    # 1b. Optional dedupe: keep the best of each near-duplicate cluster.
+    if dedupe:
+        results = _resolve_duplicates(results, source / DUPLICATES_DIRNAME, hash_threshold)
 
     best_image = max(results, key=lambda x: x["score"])
     print("\n--- Best Image Found ---")
@@ -122,8 +188,19 @@ def filter_by_percentile(source_dir, top_n_percent=DEFAULT_TOP_PERCENT, device=D
     print("\nProcessing complete.")
 
 
-def filter_by_threshold(source_dir, threshold=6.5, device=DEFAULT_DEVICE):
-    """Score-and-move in a single pass using a fixed score cutoff."""
+def filter_by_threshold(
+    source_dir,
+    threshold=6.5,
+    device=DEFAULT_DEVICE,
+    dedupe=False,
+    hash_threshold=DEFAULT_HAMMING_THRESHOLD,
+):
+    """Score a directory and move images scoring ``>=`` ``threshold`` into
+    ``aesthetic_keepers`` (the rest into ``others``).
+
+    With ``dedupe=True``, near-duplicate frames are collapsed to their
+    highest-scoring member first (losers moved to ``duplicates``), so only the
+    best frame of each cluster is tested against the cutoff."""
     source, high_quality_dir, others_dir = _prepare_dirs(source_dir)
 
     print("Loading NIMA model...")
@@ -136,13 +213,19 @@ def filter_by_threshold(source_dir, threshold=6.5, device=DEFAULT_DEVICE):
         print("No image files found.")
         return
 
-    pbar = tqdm(files, desc="Critiquing")
-    for file in pbar:
+    # 1. Scoring pass (single decode per file; hash alongside when deduping).
+    results = _score_directory(estimator, files, dedupe)
+    if not results:
+        return
+
+    # 1b. Optional dedupe before applying the cutoff.
+    if dedupe:
+        results = _resolve_duplicates(results, source / DUPLICATES_DIRNAME, hash_threshold)
+
+    # 2. Moving pass.
+    for item in tqdm(results, desc="Moving"):
         try:
-            score = estimator.estimate(str(file))
-            pbar.set_postfix({"score": f"{score:.2f}"})
-            target = high_quality_dir if score >= threshold else others_dir
-            shutil.move(str(file), str(target / file.name))
-            estimator.empty_cache()
+            target = high_quality_dir if item["score"] >= threshold else others_dir
+            shutil.move(str(item["path"]), str(target / item["path"].name))
         except Exception as e:
-            pbar.write(f"Error processing {file.name}: {e}")
+            print(f"Error moving {item['path'].name}: {e}")
