@@ -1,7 +1,6 @@
 """Central configuration: thresholds, file patterns, and the shared log schema.
 
-Every tunable number that used to live in a script's ``__main__`` block or be
-hardcoded inline now has a home here. CLI flags override these defaults.
+The single home for every tunable number; CLI flags override these defaults.
 """
 
 from dataclasses import dataclass
@@ -37,8 +36,7 @@ DEFAULT_AESTHETIC_THRESHOLD = 6.5
 class TechnicalCriteria:
     """Keep-decision for the live technical pass (AND of all conditions).
 
-    Mirrors the original ``processor/pipeline.py`` logic:
-    ``focus > 500 and shake >= 20 and over <= 0.05``.
+    Default logic: ``focus > 500 and shake >= 20 and over <= 0.05``.
     """
 
     min_focus: float = 500.0
@@ -53,10 +51,9 @@ class TechnicalCriteria:
 class LogCullCriteria:
     """Re-cull decision applied to logged metrics (OR of two clauses).
 
-    Mirrors the original ``cull_from_log.py`` expression:
-    ``(focus > 350 & shake > 19) | (over < 0.05 & under < 0.30)``. Intentionally
-    distinct from :class:`TechnicalCriteria` — this is the threshold-tuning pass
-    run after a dry run, without re-decoding RAWs.
+    Default expression: ``(focus > 350 & shake > 19) | (over < 0.05 & under < 0.30)``.
+    Intentionally distinct from :class:`TechnicalCriteria` — this is the
+    threshold-tuning pass run after a dry run, without re-decoding images.
     """
 
     focus_gt: float = 350.0

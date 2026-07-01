@@ -34,7 +34,7 @@ def cull_from_log(
     if not log_exists(log_path):
         print(
             f"No log found at '{log_path}'; nothing to cull.\n"
-            f"Run 'cull technical {source_dir}' first to generate metrics."
+            f"Run 'winnow technical {source_dir}' first to generate metrics."
         )
         return
 

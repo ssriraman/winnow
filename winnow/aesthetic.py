@@ -1,8 +1,10 @@
-"""Aesthetic scoring pass: batch-score to the log, or filter by percentile/threshold.
+"""Aesthetic scoring pass, built on the shared :class:`~winnow.nima.NimaEstimator`.
 
-Consolidates the original ``calculate_asthetic_scores.py`` (batch to log),
-``filter_by_percentile.py`` (top-N%% move), and ``nima_standalone.py``
-(fixed-threshold move) onto the single shared :class:`~winnow.nima.NimaEstimator`.
+Three entry points:
+
+* :func:`batch_score_to_log` — score a directory into the log's ``aesthetic`` column.
+* :func:`filter_by_percentile` — move the top N%% by score into ``aesthetic_keepers``.
+* :func:`filter_by_threshold` — move images scoring ``>=`` a fixed cutoff.
 """
 
 import shutil

@@ -1,6 +1,6 @@
 """File discovery: case-insensitive, covers RAW + JPEG/PNG, non-recursive."""
 
-from winnow.io_utils import find_images, find_raws
+from winnow.io_utils import find_images, find_raws, is_raw
 
 
 def _touch(directory, *names):
@@ -29,3 +29,11 @@ def test_find_raws_matches_only_raw_extensions(tmp_path):
 
     names = {p.name for p in find_raws(tmp_path)}
     assert names == {"a.CR3", "b.cr3", "c.dng", "f.CR2", "g.arw"}
+
+
+def test_is_raw_is_case_insensitive_and_excludes_standard_images():
+    assert is_raw("photo.CR3")
+    assert is_raw("photo.cr2")
+    assert is_raw("x.NEF")
+    assert not is_raw("photo.jpg")
+    assert not is_raw("x.png")

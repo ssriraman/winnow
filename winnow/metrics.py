@@ -20,7 +20,9 @@ def calculate_tenengrad(image_gray):
 def check_shake_fft(image_gray):
     """Detect motion blur via the spread of the FFT magnitude spectrum.
 
-    Higher std-dev = more high-frequency content = sharper / less shake.
+    On natural photos a higher std-dev tracks more high-frequency content
+    (sharper / less shake); the ``shake`` threshold in config is tuned against
+    that. The heuristic is calibrated for photographs, not synthetic patterns.
     """
     dft = cv2.dft(np.float32(image_gray), flags=cv2.DFT_COMPLEX_OUTPUT)
     dft_shift = np.fft.fftshift(dft)

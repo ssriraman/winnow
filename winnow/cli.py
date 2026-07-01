@@ -75,7 +75,9 @@ def _cmd_prepare_log(args):
 
 
 def build_parser():
-    parser = argparse.ArgumentParser(prog="winnow", description="RAW photo culling pipeline")
+    parser = argparse.ArgumentParser(
+        prog="winnow", description="Two-axis (technical + aesthetic) photo culling pipeline"
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     # --- technical ---------------------------------------------------------
