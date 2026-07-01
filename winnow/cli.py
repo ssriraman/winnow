@@ -18,6 +18,7 @@ import argparse
 from .config import (
     DEFAULT_AESTHETIC_THRESHOLD,
     DEFAULT_DEVICE,
+    DEFAULT_HAMMING_THRESHOLD,
     DEFAULT_TOP_PERCENT,
     LOG_FILENAME,
     LogCullCriteria,
@@ -49,10 +50,20 @@ def _cmd_aesthetic_filter(args):
     from .aesthetic import filter_by_percentile, filter_by_threshold
 
     if args.threshold is not None:
-        filter_by_threshold(args.directory, threshold=args.threshold, device=args.device)
+        filter_by_threshold(
+            args.directory,
+            threshold=args.threshold,
+            device=args.device,
+            dedupe=args.dedupe,
+            hash_threshold=args.hash_threshold,
+        )
     else:
         filter_by_percentile(
-            args.directory, top_n_percent=args.top_percent, device=args.device
+            args.directory,
+            top_n_percent=args.top_percent,
+            device=args.device,
+            dedupe=args.dedupe,
+            hash_threshold=args.hash_threshold,
         )
 
 
@@ -115,6 +126,16 @@ def build_parser():
         help=f"Keep scores >= T instead of a percentile (e.g. {DEFAULT_AESTHETIC_THRESHOLD})",
     )
     p.add_argument("--device", default=DEFAULT_DEVICE)
+    p.add_argument(
+        "--dedupe", action="store_true",
+        help="Collapse near-duplicate frames (by perceptual hash) to their "
+             "highest-scoring member before filtering; move the rest to 'duplicates'",
+    )
+    p.add_argument(
+        "--hash-threshold", type=int, default=DEFAULT_HAMMING_THRESHOLD,
+        help=f"Max Hamming distance to treat two images as duplicates "
+             f"(default: {DEFAULT_HAMMING_THRESHOLD}; larger = more aggressive)",
+    )
     p.set_defaults(func=_cmd_aesthetic_filter)
 
     # --- cull-from-log -----------------------------------------------------

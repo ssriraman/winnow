@@ -58,8 +58,8 @@ uv run winnow --help
 | Command | What it does |
 | --- | --- |
 | `technical DIR` | Compute focus/shake/exposure for every supported image (RAW + JPEG/PNG), append to `DIR/analysis_log.csv` (skip with `--no-log`), and move sharp keepers into `DIR/keepers`. |
-| `aesthetic-score DIR` | Write NIMA scores into the log's `aesthetic` column, creating/extending the log as needed (resumable — skips already-scored files). |
-| `aesthetic-filter DIR` | Move the top `--top-percent N` (default 10) images into `DIR/aesthetic_keepers`, the rest into `DIR/others`. Use `--threshold T` for a fixed cutoff instead. |
+| `aesthetic-score DIR` | Write NIMA scores into the log's `aesthetic` column (plus a perceptual `hash` for dedupe), creating/extending the log as needed (resumable — skips already-scored files). |
+| `aesthetic-filter DIR` | Move the top `--top-percent N` (default 10) images into `DIR/aesthetic_keepers`, the rest into `DIR/others`. Use `--threshold T` for a fixed cutoff instead. Add `--dedupe` to first collapse near-duplicate frames (see below). |
 | `cull-from-log DIR` | Re-run the keep/reject decision from logged metrics **without re-decoding RAWs** — use this to tune thresholds. |
 | `prepare-log` | Add the `aesthetic` column to a pre-existing log. |
 
@@ -71,11 +71,36 @@ uv run winnow technical ./data --min-focus 400 --min-shake 18
 uv run winnow aesthetic-score ./data
 uv run winnow aesthetic-filter ./data --top-percent 5
 uv run winnow aesthetic-filter ./data --threshold 6.5
+uv run winnow aesthetic-filter ./data --top-percent 5 --dedupe
 uv run winnow cull-from-log ./data --focus-gt 350 --shake-gt 19
 ```
 
 All thresholds have sensible defaults (see `winnow/config.py`); every one
 is overridable via flags.
+
+### Deduplicating near-identical frames
+
+`aesthetic-filter --dedupe` collapses visual near-duplicates — burst frames,
+brackets, minor re-crops — **before** the percentile/threshold decision. Each
+image gets a perceptual [difference hash](https://en.wikipedia.org/wiki/Perceptual_hashing);
+images whose hashes differ by at most `--hash-threshold` bits (default `5` of
+64) are grouped, and **only the highest aesthetic score in each group is kept**.
+The losers are moved to `DIR/duplicates` and excluded from the percentile math,
+so a 30-frame burst counts once — as its single best frame — rather than
+crowding out the rest of the shoot.
+
+```bash
+# Keep the top 5% of unique shots; larger threshold = more aggressive grouping.
+uv run winnow aesthetic-filter ./shoot/keepers --top-percent 5 --dedupe --hash-threshold 6
+```
+
+The hash uses only Pillow + numpy (core deps), so `--dedupe` works even without
+the optional `aesthetic` extra's model download already in place — though
+scoring itself still needs it.
+
+`aesthetic-score` also records each image's perceptual hash into the log's
+`hash` column (as a `0x`-prefixed hex string), so it is captured once during
+scoring and available for inspection or downstream tooling.
 
 ### Sample run
 

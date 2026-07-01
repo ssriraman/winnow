@@ -19,12 +19,15 @@ def log_exists(log_path) -> bool:
 def load_log(log_path) -> pd.DataFrame:
     """Return the log as a DataFrame, or an empty schema'd frame if it is missing.
 
-    Always guarantees an ``aesthetic`` column so callers never have to check.
+    Always guarantees the ``aesthetic`` and ``hash`` columns so callers never
+    have to check (older logs predating either column are upgraded in memory).
     """
     path = Path(log_path)
     if path.exists():
         df = pd.read_csv(path)
         if "aesthetic" not in df.columns:
             df["aesthetic"] = 0.0
+        if "hash" not in df.columns:
+            df["hash"] = None
         return df
     return pd.DataFrame(columns=LOG_COLUMNS)
