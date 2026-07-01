@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # Core + dev only. The optional 'aesthetic' extra (torch + downloaded
+      # NIMA weights) is intentionally excluded to keep CI fast and offline.
+      - name: Sync dependencies
+        run: uv sync --group dev --python ${{ matrix.python-version }}
+
+      - name: Lint (ruff)
+        run: uv run ruff check winnow tests
+
+      - name: Test (pytest)
+        run: uv run pytest -q

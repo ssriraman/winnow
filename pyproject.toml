@@ -1,0 +1,60 @@
+[project]
+name = "winnow"
+version = "0.1.0"
+description = "Two-axis (technical + aesthetic) culling pipeline for camera RAW files"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+dependencies = [
+    "numpy>=2.2.6",
+    # Headless build: no GUI/Qt/libGL deps. This pipeline never opens windows,
+    # so headless is smaller and works on servers and in CI.
+    "opencv-python-headless>=4.9",
+    "pandas>=2.3.3",
+    "rawpy>=0.27.0",
+    "scikit-image>=0.25.2",
+    "tqdm>=4.68.3",
+]
+
+# The aesthetic (NIMA) pass is optional. It pulls in pyiqa and the torch stack,
+# and its pretrained AVA weights are under a NONCOMMERCIAL license (PolyForm
+# Noncommercial 1.0.0 + NTU S-Lab). The core technical culling above stays
+# permissively licensed and dependency-light.
+[project.optional-dependencies]
+aesthetic = [
+    "pyiqa>=0.1.11",
+    "torch>=2.2",
+    "torchvision>=0.17",
+    # pyiqa -> facexlib -> numba: force a build that supports modern Python +
+    # numpy 2.x (the resolver otherwise backtracks to numba 0.53 / llvmlite 0.36,
+    # which fail to build on Python >=3.10).
+    "numba>=0.60",
+]
+
+[project.scripts]
+winnow = "winnow.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+# Imports are intentionally guarded behind a try/except (optional extra) and a
+# help-text constant, so they can't sit at the very top of the module.
+"winnow/nima.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["winnow"]

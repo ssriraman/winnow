@@ -1,0 +1,35 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# --- Project data (NEVER commit) ------------------------------------------
+# Photo/RAW datasets and their culling outputs. These can be hundreds of GB.
+data/
+data_1/
+d1/
+keepers/
+aesthetic_keepers/
+others/
+
+# RAW files and analysis artifacts, wherever they land
+*.CR3
+*.cr3
+*.ARW
+*.arw
+*.DNG
+*.dng
+*.NEF
+*.nef
+analysis_log.csv
+
+# Model weight caches (downloaded on demand by pyiqa)
+*.pth
+*.pt
+*.safetensors
