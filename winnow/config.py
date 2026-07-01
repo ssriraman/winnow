@@ -9,7 +9,7 @@ from dataclasses import dataclass
 # --- File discovery --------------------------------------------------------
 # Extension matching is case-insensitive (see io_utils). RAW files are decoded
 # via rawpy; standard images (JPEG/PNG) via Pillow.
-RAW_EXTENSIONS = (".cr3", ".arw", ".dng", ".nef")
+RAW_EXTENSIONS = (".cr3", ".cr2", ".arw", ".dng", ".nef")
 STANDARD_EXTENSIONS = (".jpg", ".jpeg", ".png")
 # Everything the pipeline can decode and score.
 IMAGE_EXTENSIONS = RAW_EXTENSIONS + STANDARD_EXTENSIONS

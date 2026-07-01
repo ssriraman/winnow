@@ -5,7 +5,7 @@
 > it *looks* — so you start editing from the keepers instead of the dump.
 
 A command-line pipeline that culls large batches of camera RAW files (primarily
-Canon `.CR3`, plus `.ARW`/`.DNG`/`.NEF`) — and standard JPEG/PNG images — on two
+Canon `.CR3`/`.CR2`, plus `.ARW`/`.DNG`/`.NEF`) — and standard JPEG/PNG images — on two
 independent axes:
 
 - **Technical quality** — focus (Tenengrad), motion blur (FFT), exposure clipping.

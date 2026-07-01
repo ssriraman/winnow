@@ -25,7 +25,7 @@ def test_find_images_covers_raw_and_standard_case_insensitively(tmp_path):
 
 
 def test_find_raws_matches_only_raw_extensions(tmp_path):
-    _touch(tmp_path, "a.CR3", "b.cr3", "c.dng", "d.jpg", "e.png")
+    _touch(tmp_path, "a.CR3", "b.cr3", "c.dng", "d.jpg", "e.png", "f.CR2", "g.arw")
 
     names = {p.name for p in find_raws(tmp_path)}
-    assert names == {"a.CR3", "b.cr3", "c.dng"}
+    assert names == {"a.CR3", "b.cr3", "c.dng", "f.CR2", "g.arw"}
