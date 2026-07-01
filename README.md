@@ -5,7 +5,8 @@
 > it *looks* — so you start editing from the keepers instead of the dump.
 
 A command-line pipeline that culls large batches of camera RAW files (primarily
-Canon `.CR3`) on two independent axes:
+Canon `.CR3`, plus `.ARW`/`.DNG`/`.NEF`) — and standard JPEG/PNG images — on two
+independent axes:
 
 - **Technical quality** — focus (Tenengrad), motion blur (FFT), exposure clipping.
 - **Aesthetic quality** — a pretrained [NIMA](https://github.com/chaofengc/IQA-PyTorch)
@@ -56,7 +57,7 @@ uv run winnow --help
 
 | Command | What it does |
 | --- | --- |
-| `technical DIR` | Compute focus/shake/exposure for every `*.CR3`, append to `DIR/analysis_log.csv` (skip with `--no-log`), and move sharp keepers into `DIR/keepers`. |
+| `technical DIR` | Compute focus/shake/exposure for every supported image (RAW + JPEG/PNG), append to `DIR/analysis_log.csv` (skip with `--no-log`), and move sharp keepers into `DIR/keepers`. |
 | `aesthetic-score DIR` | Write NIMA scores into the log's `aesthetic` column, creating/extending the log as needed (resumable — skips already-scored files). |
 | `aesthetic-filter DIR` | Move the top `--top-percent N` (default 10) images into `DIR/aesthetic_keepers`, the rest into `DIR/others`. Use `--threshold T` for a fixed cutoff instead. |
 | `cull-from-log DIR` | Re-run the keep/reject decision from logged metrics **without re-decoding RAWs** — use this to tune thresholds. |

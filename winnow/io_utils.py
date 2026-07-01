@@ -11,7 +11,7 @@ import numpy as np
 import rawpy
 from PIL import Image
 
-from .config import IMAGE_GLOBS, RAW_EXTENSIONS
+from .config import IMAGE_EXTENSIONS, RAW_EXTENSIONS
 
 
 def is_raw(path) -> bool:
@@ -36,12 +36,21 @@ def load_gray(path) -> np.ndarray:
     return cv2.cvtColor(load_rgb(path), cv2.COLOR_RGB2GRAY)
 
 
-def find_images(directory, globs=IMAGE_GLOBS):
-    """All RAW + JPEG images in ``directory`` (non-recursive)."""
-    base = Path(directory)
-    return [p for g in globs for p in base.glob(g)]
+def _find_by_extensions(directory, extensions):
+    """Sorted files in ``directory`` (non-recursive) whose suffix matches
+    ``extensions``, compared case-insensitively (so ``.CR3`` and ``.cr3`` both
+    match). Sub-directories such as ``keepers/`` are skipped."""
+    exts = {e.lower() for e in extensions}
+    return sorted(
+        p for p in Path(directory).iterdir() if p.is_file() and p.suffix.lower() in exts
+    )
+
+
+def find_images(directory):
+    """All decodable images (RAW + JPEG/PNG) in ``directory`` (non-recursive)."""
+    return _find_by_extensions(directory, IMAGE_EXTENSIONS)
 
 
 def find_raws(directory):
-    """Canon RAW (``*.CR3``) files in ``directory`` (non-recursive)."""
-    return list(Path(directory).glob("*.CR3"))
+    """RAW files (e.g. ``.CR3``/``.ARW``/``.DNG``/``.NEF``) in ``directory``."""
+    return _find_by_extensions(directory, RAW_EXTENSIONS)

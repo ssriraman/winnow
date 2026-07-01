@@ -7,8 +7,12 @@ hardcoded inline now has a home here. CLI flags override these defaults.
 from dataclasses import dataclass
 
 # --- File discovery --------------------------------------------------------
+# Extension matching is case-insensitive (see io_utils). RAW files are decoded
+# via rawpy; standard images (JPEG/PNG) via Pillow.
 RAW_EXTENSIONS = (".cr3", ".arw", ".dng", ".nef")
-IMAGE_GLOBS = ("*.CR3", "*.jpg", "*.jpeg", "*.JPG", "*.JPEG")
+STANDARD_EXTENSIONS = (".jpg", ".jpeg", ".png")
+# Everything the pipeline can decode and score.
+IMAGE_EXTENSIONS = RAW_EXTENSIONS + STANDARD_EXTENSIONS
 
 # --- Shared analysis log ---------------------------------------------------
 LOG_FILENAME = "analysis_log.csv"

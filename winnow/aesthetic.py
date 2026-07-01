@@ -17,10 +17,10 @@ from .logstore import load_log
 
 
 def batch_score_to_log(directory_path, log_path=LOG_FILENAME, device=DEFAULT_DEVICE):
-    """Score every un-scored ``*.CR3`` in a dir and write it to the log's
-    ``aesthetic`` column. Does not require a pre-existing log: a missing log is
-    created, and files with no existing row are appended. Resumable: rows with
-    ``aesthetic > 0`` are skipped."""
+    """Score every un-scored image (RAW/JPEG/PNG) in a dir and write it to the
+    log's ``aesthetic`` column. Does not require a pre-existing log: a missing
+    log is created, and files with no existing row are appended. Resumable: rows
+    with ``aesthetic > 0`` are skipped."""
     from .nima import NimaEstimator  # lazy: pulls the optional pyiqa/torch stack
 
     estimator = NimaEstimator(device=device)
@@ -29,7 +29,7 @@ def batch_score_to_log(directory_path, log_path=LOG_FILENAME, device=DEFAULT_DEV
     df = load_log(log_path)
 
     processed_files = set(df[df["aesthetic"] > 0]["filename"])
-    files = list(Path(directory_path).glob("*.CR3"))
+    files = find_images(directory_path)
 
     print(f"Starting aesthetic batch processing for {len(files)} files...")
 

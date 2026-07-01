@@ -1,7 +1,8 @@
-"""Technical culling pass: log metrics for every RAW, move the sharp keepers.
+"""Technical culling pass: log metrics for every image, move the sharp keepers.
 
-Replaces ``processor/pipeline.py``. Writes/append to ``analysis_log.csv`` inside
-the target directory and moves files passing the criteria into ``keepers/``.
+Handles RAW (rawpy) and standard images (JPEG/PNG via Pillow). Writes/appends to
+``analysis_log.csv`` inside the target directory and moves files passing the
+criteria into ``keepers/``.
 """
 
 import csv
@@ -11,7 +12,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 from .config import LOG_FILENAME, TECHNICAL_COLUMNS, TechnicalCriteria
-from .io_utils import find_raws, load_gray
+from .io_utils import find_images, load_gray
 from .metrics import (
     calculate_exposure_metrics,
     calculate_tenengrad,
@@ -43,7 +44,7 @@ def cull_directory(
     keep_dir = path / output_keep
     keep_dir.mkdir(exist_ok=True)
 
-    files = find_raws(path)
+    files = find_images(path)
 
     # Append mode creates the log if missing; header only written when empty.
     log_file = path / log_name
@@ -55,7 +56,7 @@ def cull_directory(
             if log_file.stat().st_size == 0:
                 writer.writerow(TECHNICAL_COLUMNS)
 
-        for file in tqdm(files, desc="Processing RAW files"):
+        for file in tqdm(files, desc="Processing images"):
             try:
                 focus, shake, over, under = get_image_metrics(file)
                 if writer is not None:
